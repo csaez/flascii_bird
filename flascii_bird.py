@@ -57,7 +57,9 @@ def get_tube():
 
 
 def mainloop():
-    global space, bird_vel, bird_pos, tubes, SCORE, tube_gap, TERMINAL_SIZE
+    global KEY_STRENGHT, TERMINAL_SIZE, SCORE
+    global space, bird_vel, bird_pos, tubes, tube_gap
+
     t = 0
     while True:
         # draw background
@@ -79,7 +81,7 @@ def mainloop():
 
         # draw bird
         # calc bird position
-        f = [0, -2.5] if space else [0, 0]
+        f = [0, -KEY_STRENGHT] if space else [0, 0]
         space = False
         for i in range(2):
             bird_vel[i] += GRAVITY[i]
@@ -130,6 +132,7 @@ if __name__ == "__main__":
     SCORE = 0
     STEP = 0.1
     GRAVITY = (0, 0.2)
+    KEY_STRENGHT = 2.2
     TERMINAL_SIZE = (80, 25)
 
     # assets
