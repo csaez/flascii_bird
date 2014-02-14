@@ -18,6 +18,7 @@ import time
 import msvcrt  # windows-only :_(
 from math import fmod, sqrt
 from threading import Timer
+from random import randint
 
 
 class Vector(object):
@@ -65,7 +66,7 @@ class Sprite(object):
 
     @property
     def shape(self):
-        if type(self._shape) in ((list, tuple)):
+        if type(self._shape) in (list, tuple):
             index = 0 if self.vel.y > 0 else 1
             return self._shape[index]
         return self._shape
@@ -142,12 +143,14 @@ def flascii_bird():
 
         # tubes
         if fmod(t, 51) == 0 or t == 1:
-            up = Sprite("|      |\n" * 4 + "--------\n--------")
+            pipe_height = randint(1, 7)
+            up = Sprite("|      |\n" * pipe_height + "--------\n--------")
             up.pos = Vector(TERMINAL_SIZE.x, 0)
             TUBES.append(up)
-            dn = Sprite("--------\n" * 2 + "|      |\n" * 4)
+            dn = Sprite("--------\n" * 2 + "|      |\n" * (8 - pipe_height))
             dn.shape = dn.shape[:-1]  # remove last \n
-            dn.pos = Vector(TERMINAL_SIZE.x, TERMINAL_SIZE.y - 10)
+            dn.pos = Vector(TERMINAL_SIZE.x,
+                            TERMINAL_SIZE.y + pipe_height - 8 - 6)
             TUBES.append(dn)
             TUBES = [x for x in TUBES if x.pos.x > -7]  # cleanup
         f = Vector(-1, 0)
