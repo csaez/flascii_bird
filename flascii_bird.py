@@ -108,7 +108,7 @@ def flascii_bird():
     SCORE = 0
     STEP = 0.1
     GRAVITY = Vector(0, 1)
-    KEY_STRENGHT = Vector(0, -4)
+    KEY_STRENGHT = Vector(0, -6)
     TERMINAL_SIZE = Vector(79, 25)
 
     BG = (" " * TERMINAL_SIZE.x + "\n") * TERMINAL_SIZE.y
@@ -139,7 +139,7 @@ def flascii_bird():
             dn.pos = Vector(TERMINAL_SIZE.x, TERMINAL_SIZE.y - 10)
             TUBES.append(dn)
             TUBES = [x for x in TUBES if x.pos.x > -7]  # cleanup
-        f = Vector(-2, 0)
+        f = Vector(-1, 0)
         for x in TUBES:
             x.simulate([f], max_speed=1)
 
@@ -148,9 +148,7 @@ def flascii_bird():
         if KEY_PRESSED:
             KEY_PRESSED = False
             BIRD.vel = KEY_STRENGHT
-            BIRD.simulate(max_speed=25)
-        colliders = list(TUBES)
-        colliders.append(GROUND)
+            BIRD.simulate(max_speed=25)  # dont clamp velocity
 
         # score
         for x in TUBES:
@@ -170,8 +168,11 @@ def flascii_bird():
             frame = x.draw(frame)
         print BIRD.draw(frame)
 
-        # game over
+        # collisions
+        colliders = list(TUBES)
+        colliders.append(GROUND)
         if BIRD.collide(colliders) or BIRD.pos.y < 0:
+            # game over
             print (" " * TERMINAL_SIZE.x + "\n") * TERMINAL_SIZE.y
             print "GAME OVER"
             print "SCORE:", SCORE
