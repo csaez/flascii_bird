@@ -16,141 +16,167 @@
 
 import time
 import msvcrt  # windows-only :_(
-from math import fmod
+from math import fmod, sqrt
 from threading import Timer
 
 
-def get_bbox(asset):
-    sp = asset.split("\n")
-    return (max([len(_) for _ in sp]), len(sp))
+class Vector(object):
+
+    def __init__(self, x, y):
+        super(Vector, self).__init__()
+        self.x, self.y = x, y
+
+    def __add__(self, vector):
+        if isinstance(vector, self.__class__):
+            return self.__class__(self.x + vector.x, self.y + vector.y)
+        return super(Vector, self).__add__(vector)
+
+    def __mul__(self, vector):
+        if isinstance(vector, self.__class__):
+            return self.__class__(self.x * vector.x, self.y * vector.y)
+        return self.__class__(self.x * vector, self.y * vector)
+
+    def __repr__(self):
+        return "{0}, {1}".format(self.x, self.y)
+
+    @property
+    def length(self):
+        return sqrt(self.x ** 2 + self.y ** 2)
+
+    def normalize(self):
+        _length = self.length
+        self.x = self.x / _length
+        self.y = self.y / _length
 
 
-def add_to_bufffer(screen, asset, x=0, y=0):
-    x, y = int(x), int(y)
-    h, w = get_bbox(asset)
-    sp = asset.split("\n")
-    for i, s in enumerate(sp):
-        ln = screen[i + y]
-        if x >= 0:
-            ln = ln[:x] + s + ln[x + len(s):]
-        else:
-            ln = s[abs(x):] + ln[x + len(s):] + (" " * 80)
-        screen[i + y] = ln
-    screen = [l[:79] for l in screen]
-    return screen[:26]
+class Sprite(object):
+
+    def __init__(self, shape):
+        self.shape = shape
+        self.pos = Vector(0, 0)
+        self.vel = Vector(0, 0)
+
+    @property
+    def bbox(self):
+        if not hasattr(self, "_bbox"):
+            sp = self.shape.split("\n")
+            self._bbox = Vector(max([len(x) for x in sp]), len(sp))
+        return self._bbox
+
+    def simulate(self, forces=None, max_speed=2):
+        forces = forces or list()
+        for f in forces:
+            self.vel = self.vel + f  # time, mass == 1
+        if self.vel.length > max_speed:
+            self.vel.normalize()
+            self.vel = self.vel * max_speed
+        self.pos = self.pos + self.vel
+
+    def collide(self, obstacles=None):
+        obstacles = obstacles or list()
+        for o in obstacles:
+            condx = all([self.pos.x + self.bbox.x > o.pos.x,
+                         self.pos.x < o.pos.x + o.bbox.x])
+            condy = all([self.pos.y + self.bbox.y > o.pos.y,
+                         self.pos.y < o.pos.y + o.bbox.y])
+            if condx and condy:
+                return True
+        return False
+
+    def draw(self, BG):
+        BG = BG.split("\n")
+        self.pos.x, self.pos.y = int(self.pos.x), int(self.pos.y)  # rasterize
+        for i, s in enumerate(self.shape.split("\n")):
+            x = BG[i + self.pos.y]
+            if self.pos.x >= 0:
+                x = x[:self.pos.x] + s + x[self.pos.x + len(s):]
+            else:
+                x = s[abs(self.pos.x):] + x[self.pos.x + len(s):] + (" " * 79)
+            BG[i + self.pos.y] = x
+        return "\n".join([x[:79] for x in BG][:25])
 
 
 def key_pressed():
-    global space
+    global KEY_PRESSED
     if msvcrt.getch() == " ":
-        space = True
+        KEY_PRESSED = True
 
 
-def get_tube():
-    gap = 6
-    hmax = 22
-    up = ("|     |\n" * (hmax - 2)) + ("-------\n" * 2)
-    up = "\n".join(up.split("\n")[hmax - (hmax / 2 - gap):])
-    dn = ("-------\n" * 2) + ("|     |\n" * (hmax - 2))
-    dn = "\n".join((dn.split("\n")[:hmax / 2 - gap:]))
-    return up, dn
+def flascii_bird():
+    global KEY_PRESSED
 
+    SCORE = 0
+    STEP = 0.1
+    GRAVITY = Vector(0, 1)
+    KEY_STRENGHT = Vector(0, -4)
+    TERMINAL_SIZE = Vector(79, 25)
 
-def mainloop():
-    global KEY_STRENGHT, TERMINAL_SIZE, SCORE
-    global space, bird_vel, bird_pos, tubes, tube_gap
+    BG = (" " * TERMINAL_SIZE.x + "\n") * TERMINAL_SIZE.y
+    TUBES = list()
+    GROUND = ("=" * TERMINAL_SIZE.x + "\n") + \
+        ("." * TERMINAL_SIZE.x + "\n") * 3
+    GROUND = Sprite(GROUND)
+    GROUND.pos = Vector(0, 21)
+    BIRD = Sprite(" / (._\n===_/-")
+    BIRD.pos = Vector(10, 0)
 
     t = 0
     while True:
-        # draw background
-        b = BG.split("\n")
-        b = add_to_bufffer(b, " SCORE: " + str(SCORE) + " ", 65, 24)
-        b = add_to_bufffer(b, "Press <SPACE BAR>", 5, 24)
-
-        # draw tubes
-        minx = TERMINAL_SIZE[0]
-        for i, tb in enumerate(tubes):
-            posx = (TERMINAL_SIZE[0] + tb[1]) - t
-            if fmod(i, 2) == 0:  # top tubes
-                posy = 4
-            else:
-                posy = TERMINAL_SIZE[1] - tube_gap
-            b = add_to_bufffer(b, tb[0], posx, posy)
-            tubes[i][3] = (posx, posy)  # update position
-            minx = posx if posx < minx else minx
-
-        # draw bird
-        # calc bird position
-        f = [0, -KEY_STRENGHT] if space else [0, 0]
-        space = False
-        for i in range(2):
-            bird_vel[i] += GRAVITY[i]
-            if i and bird_vel[i] > 1:
-                bird_vel[i] = 1  # normalize velocity
-            bird_vel[i] += f[i]
-        bird_pos = [int(bird_pos[i] + bird_vel[i]) for i in range(2)]
-        b = add_to_bufffer(b, BIRD, bird_pos[0], bird_pos[1])
-
-        print "\n".join(b)
+        t += 1
 
         # key event
         key_event = Timer(STEP, key_pressed)
         key_event.start()
         time.sleep(STEP)
 
-        # check collisions:
-        # background
-        if any([bird_pos[1] + bird_bbox[1] > TERMINAL_SIZE[1] - 4,
-                bird_pos[1] < 0]):
-            return
         # tubes
-        for tube in tubes:
-            bx, by = tube[2]
-            tx, ty = tube[3]
-            condx = all([bird_pos[0] + bird_bbox[0] > tx,
-                         bird_pos[0] < tx + bx])
-            condy = all([bird_pos[1] + bird_bbox[1] > ty,
-                         bird_pos[1] < ty + by])
-            if condx and condy:
-                return
+        if fmod(t, 51) == 0 or t == 1:
+            up = Sprite("|      |\n" * 4 + "--------\n--------")
+            up.pos = Vector(TERMINAL_SIZE.x, 0)
+            TUBES.append(up)
+            dn = Sprite("--------\n" * 2 + "|      |\n" * 4)
+            dn.shape = dn.shape[:-1]  # remove last \n
+            dn.pos = Vector(TERMINAL_SIZE.x, TERMINAL_SIZE.y - 10)
+            TUBES.append(dn)
+            TUBES = [x for x in TUBES if x.pos.x > -7]  # cleanup
+        f = Vector(-2, 0)
+        for x in TUBES:
+            x.simulate([f], max_speed=1)
 
-        # update score
-        if minx == 4:
-            SCORE += 1
+        # bird
+        BIRD.simulate([GRAVITY])
+        if KEY_PRESSED:
+            KEY_PRESSED = False
+            BIRD.vel = KEY_STRENGHT
+            BIRD.simulate(max_speed=25)
+        colliders = list(TUBES)
+        colliders.append(GROUND)
 
-        # add tubes
-        if fmod(t, 50) == 0:
-            top, dwn = get_tube()
-            tubes.append([top, t, get_bbox(top), (0, 0)])
-            tubes.append([dwn, t, get_bbox(dwn), (0, 0)])
-        tubes = [x for x in tubes if t - x[1] < 86]  # filter
+        # score
+        for x in TUBES:
+            if x.pos.x == BIRD.pos.x - 1:
+                SCORE += 0.5  # each tube
+        SCORE = int(SCORE)
 
-        t += 1
+        # draw
+        frame = GROUND.draw(BG)
+        for x in TUBES:
+            frame = x.draw(frame)
+        s = Sprite(" SCORE: " + str(SCORE) + " ")
+        s.pos = Vector(60, 23)
+        docs = Sprite(" PRESS <SPACEBAR> ")
+        docs.pos = Vector(5, 23)
+        for x in (s, docs):
+            frame = x.draw(frame)
+        print BIRD.draw(frame)
+
+        # game over
+        if BIRD.collide(colliders) or BIRD.pos.y < 0:
+            print (" " * TERMINAL_SIZE.x + "\n") * TERMINAL_SIZE.y
+            print "GAME OVER"
+            print "SCORE:", SCORE
+            return
 
 if __name__ == "__main__":
-    # config
-    SCORE = 0
-    STEP = 0.1
-    GRAVITY = (0, 0.2)
-    KEY_STRENGHT = 2.2
-    TERMINAL_SIZE = (80, 25)
-
-    # assets
-    BG = (" " * TERMINAL_SIZE[0] + "\n") * (TERMINAL_SIZE[1] - 3) + \
-        ("=" * TERMINAL_SIZE[0] + "\n") + ("." * TERMINAL_SIZE[0] + "\n") * 3
-    BIRD = " / (._\n===_/-"
-    # BIRD = "/ O o\\\n\  V /"
-    # game vars
-    space = False
-    tube_gap = 8
-    bird_pos = [10, 0]
-    bird_vel = [0, 0]
-    bird_bbox = get_bbox(BIRD)
-    tubes = list()
-
-    # run
-    mainloop()
-    # game over
-    print " " * TERMINAL_SIZE[0] * TERMINAL_SIZE[1]  # clear screen
-    print "GAME OVER"
-    print "SCORE:", str(SCORE)
+    KEY_PRESSED = False
+    flascii_bird()
