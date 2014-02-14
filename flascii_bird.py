@@ -152,7 +152,7 @@ def flascii_bird():
 
         # score
         for x in TUBES:
-            if x.pos.x == BIRD.pos.x - 1:
+            if x.pos.x == BIRD.pos.x - 9:
                 SCORE += 0.5  # each tube
         SCORE = int(SCORE)
 
