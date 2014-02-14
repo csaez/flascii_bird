@@ -63,6 +63,17 @@ class Sprite(object):
             self._bbox = Vector(max([len(x) for x in sp]), len(sp))
         return self._bbox
 
+    @property
+    def shape(self):
+        if type(self._shape) in ((list, tuple)):
+            index = 0 if self.vel.y > 0 else 1
+            return self._shape[index]
+        return self._shape
+
+    @shape.setter
+    def shape(self, value):
+        self._shape = value
+
     def simulate(self, forces=None, max_speed=2):
         forces = forces or list()
         for f in forces:
@@ -117,7 +128,7 @@ def flascii_bird():
         ("." * TERMINAL_SIZE.x + "\n") * 3
     GROUND = Sprite(GROUND)
     GROUND.pos = Vector(0, 21)
-    BIRD = Sprite(" / (._\n===_/-")
+    BIRD = Sprite(("== (.\n \___\\", " / (./\n===_/"))
     BIRD.pos = Vector(10, 0)
 
     t = 0
