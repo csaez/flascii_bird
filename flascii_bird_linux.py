@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 # This file is part of flascii_bird.
 # Copyright (C) 2014 Cesar Saez
 
@@ -14,10 +16,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import time, sched, sys, tty ,termios
-##import msvcrt  # windows-only :_(
+import time
+import sys
+import tty
+import termios
 from math import fmod, sqrt
-from threading import Timer
 from random import randint
 import select
 
@@ -106,15 +109,14 @@ class Sprite(object):
             else:
                 x = s[abs(self.pos.x):] + x[self.pos.x + len(s):] + (" " * 79)
             BG[i + self.pos.y] = x
-        return "\n".join([x[:79] for x in BG][:25])
+        return "\n".join([ch[:79] for ch in BG][:25])
 
 
-
-
-def IsData():
+def is_data():
     return select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], [])
 
-def flascii_bird():
+
+def main():
     global KEY_PRESSED
     SCORE = 0
     STEP = 0.1
@@ -134,23 +136,23 @@ def flascii_bird():
     t = 0
 
     while True:
-        fd=sys.stdin.fileno()
+        fd = sys.stdin.fileno()
         old_settings = termios.tcgetattr(sys.stdin)
-        #tty.setraw(fd,termios.TCSANOW)
         tty.setcbreak(sys.stdin.fileno())
+
         t += 1
         time.sleep(STEP)
-        if IsData():
-            ch=sys.stdin.read(1)
-            if ch==" ":
-                KEY_PRESSED=True
+        if is_data():
+            ch = sys.stdin.read(1)
+            if ch == " ":
+                KEY_PRESSED = True
         else:
-            print "false"
+            print("false")
 
+        # if this setence in the game over, graph not right
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
-        termios.tcsetattr(fd,termios.TCSADRAIN,old_settings)  ## if this setence in the game over,graph not right
-
-
+        # tubes
         if fmod(t, 51) == 0 or t == 1:
             pipe_height = randint(1, 7)
             up = Sprite("|      |\n" * pipe_height + "--------\n--------")
@@ -189,18 +191,18 @@ def flascii_bird():
         docs.pos = Vector(5, 23)
         for x in (s, docs):
             frame = x.draw(frame)
-        print BIRD.draw(frame)
+        print(BIRD.draw(frame))
 
         # collisions
         colliders = list(TUBES)
         colliders.append(GROUND)
         if BIRD.collide(colliders) or BIRD.pos.y < 0:
             # game over
-            print (" " * TERMINAL_SIZE.x + "\n") * TERMINAL_SIZE.y
-            print "GAME OVER"
-            print "SCORE:", SCORE
+            print((" " * TERMINAL_SIZE.x + "\n") * TERMINAL_SIZE.y)
+            print("GAME OVER")
+            print("SCORE:", SCORE)
             return
 
 if __name__ == "__main__":
     KEY_PRESSED = False
-    flascii_bird()
+    main()
