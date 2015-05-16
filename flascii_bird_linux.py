@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # This file is part of flascii_bird.
 # Copyright (C) 2014 Cesar Saez
@@ -15,14 +15,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-import time
+import select
 import sys
-import tty
 import termios
+import time
+import tty
 from math import fmod, sqrt
 from random import randint
-import select
 
 
 class Vector(object):

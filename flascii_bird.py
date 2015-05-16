@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # This file is part of flascii_bird.
 # Copyright (C) 2014 Cesar Saez
 
@@ -14,11 +15,41 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+import sys
 import time
-import msvcrt  # windows-only :_(
 from math import fmod, sqrt
 from threading import Timer
 from random import randint
+
+try:
+    import msvcrt
+    PLATFORM = "win"
+except ImportError:
+    PLATFORM = "unix"
+    import tty
+    import termios
+    from select import select
+
+
+def getch():
+    if PLATFORM == "win":
+        ch = msvcrt.getch()
+        return ch
+    elif PLATFORM == "unix":
+        fd = sys.stdin.fileno()
+        old_setting = termios.tcgetattr(fd)
+        try:
+            tty.setraw(sys.stdin.fileno())
+            i, o, e = select([sys.stdin.fileno()], [], [], 5)
+            if i:
+                ch = sys.stdin.read(1)
+            else:
+                ch = ""
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_setting)
+        return ch
+    else:
+        return ""
 
 
 class Vector(object):
@@ -105,12 +136,12 @@ class Sprite(object):
             else:
                 x = s[abs(self.pos.x):] + x[self.pos.x + len(s):] + (" " * 79)
             BG[i + self.pos.y] = x
-        return "\n".join([x[:79] for x in BG][:25])
+        return "\n".join([ch[:79] for ch in BG][:25])
 
 
 def key_pressed():
     global KEY_PRESSED
-    if msvcrt.getch() == " ":
+    if getch() == " ":
         KEY_PRESSED = True
 
 
@@ -180,16 +211,16 @@ def flascii_bird():
         docs.pos = Vector(5, 23)
         for x in (s, docs):
             frame = x.draw(frame)
-        print BIRD.draw(frame)
+        print(BIRD.draw(frame))
 
         # collisions
         colliders = list(TUBES)
         colliders.append(GROUND)
         if BIRD.collide(colliders) or BIRD.pos.y < 0:
             # game over
-            print (" " * TERMINAL_SIZE.x + "\n") * TERMINAL_SIZE.y
-            print "GAME OVER"
-            print "SCORE:", SCORE
+            print((" " * TERMINAL_SIZE.x + "\n") * TERMINAL_SIZE.y)
+            print("GAME OVER")
+            print("SCORE:", SCORE)
             return
 
 if __name__ == "__main__":
