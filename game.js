@@ -73,10 +73,10 @@ function gen_pipe_sprite(each_pipe) {
   return(retval);
 }
 
-
 window.onload=function() {
   init_game();
   document.addEventListener("keydown", keyPush);
+  document.addEventListener("mousedown", keyPush);
   setInterval(game, 1000/world.FPS)
 }
 
